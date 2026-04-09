@@ -44,7 +44,7 @@ taustakuva_t=Image.open(r'how_tensors_flow.png')
 #taustakuvaskaalaus...
 tausta_leveys_alkup=1502
 tausta_korkeus_alkup=610
-#ja skaalataan uusi kuBa tämän mukaan
+#ja skaalataan uusi kuva tämän mukaan
 taustakuva_t2=taustakuva_t.resize((tausta_leveys_alkup,tausta_korkeus_alkup))
 taustakuva=ImageTk.PhotoImage(taustakuva_t2)
 uusigeometria=''.join([str(taustakuva.width()),'x',str(taustakuva.height())])
@@ -351,9 +351,9 @@ def talleta():
     print("Tallennetaan kuvat, seka opetus, validointi etta testidata...")
     #annetaan kuvalle nimi...
     #...ja jos kansiota ei ole, luodaan...
-    if os.path.isdir(''.join([kansionimi.get(),'_left/'])) & os.path.isdir(''.join([kansionimi.get(),''])):
+    if os.path.isdir(''.join([kansionimi.get(),'_left/'])) & os.path.isdir(''.join([kansionimi.get(),'_right/'])) & os.path.isdir(''.join([kansionimi.get(),''])):
         kuvanimi_left=''.join([kansionimi.get(),'_left/',str(int(time.time())),'.png'])
-        kuvanimi_right=''.join([kansionimi.get(),'/',str(int(time.time())),'.png'])
+        kuvanimi_right=''.join([kansionimi.get(),'_right/',str(int(time.time())),'.png'])
     else:
         print("luodaan uusi kansio...")
         try:
@@ -361,12 +361,12 @@ def talleta():
         except:
             print("jokin virhe")
         try:
-            os.mkdir(''.join([kansionimi.get(),'']))
+            os.mkdir(''.join([kansionimi.get(),'_right/']))
         except:
             print("jokin virhe")
 
         kuvanimi_left=''.join([kansionimi.get(),'_left/',str(int(time.time())),'.png'])
-        kuvanimi_right=''.join([kansionimi.get(),'/',str(int(time.time())),'.png'])
+        kuvanimi_right=''.join([kansionimi.get(),'_right/',str(int(time.time())),'.png'])
 
     #Tallennukset:
     print("...nimilla: ",kuvanimi_left,kuvanimi_right)
