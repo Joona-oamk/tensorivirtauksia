@@ -131,43 +131,57 @@ model = keras.models.load_model("example_model.keras")
 global silma_v
 global silma_o
 
-def aloita():
-    global model
+cap = None
+face_mesh = None
+camera_running = False
+oikea_tulosvektori = []
+vasen_tulosvektori = []
+aikavektori = []
+luku = 0
+
+
+def avaa_kamera(index=0):
+    if os.name == 'nt':
+        cap = cv2.VideoCapture(index, cv2.CAP_DSHOW)
+        if cap.isOpened():
+            return cap
+        cap.release()
+
+    return cv2.VideoCapture(index)
+
+
+def paivita_video():
     global cap
+    global face_mesh
+    global camera_running
     global silma_v
     global silma_o
-    oikea_tulosvektori=[]
-    vasen_tulosvektori=[]
-    aikavektori=[]
-    luku=0
-    #piirto-asetuksia voi luonnostella erilaisia tarpeen mukaan...
-    drawing_spec = mp_drawing.DrawingSpec(thickness=2, circle_radius=1)
-    thin_drawing_spec=mp_drawing.DrawingSpec(thickness=1,circle_radius=1)
-    cap = cv2.VideoCapture(0)
+    global oikea_tulosvektori
+    global vasen_tulosvektori
+    global aikavektori
+    global luku
 
-    print("Kameran perustarkkuus:",cap.get(3),cap.get(4))
-    frame_leveys=cap.get(3) #1920
-    frame_korkeus=cap.get(4) #1080
-    #mahdollisesti säädettävä frame ratea ... jos halutaan tarkempaa kuvaa ja jos koneen nopeus ei riita laitetettava pienemmaksi...
-    #cap.set(3, frame_leveys)
-    #cap.set(4, frame_korkeus)
-    with mp_face_mesh.FaceMesh(
-        min_detection_confidence=0.5,
-        min_tracking_confidence=0.5) as face_mesh:
-      while cap.isOpened():
-        success, frame = cap.read()
-        if not success:
-          print("Ignoring empty camera frame.")
-          continue
-        frame = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
-        frame.flags.writeable = False
-        results = face_mesh.process(frame)
+    if not camera_running or cap is None or not cap.isOpened():
+        return
 
-        #mesh annotations...
-        frame.flags.writeable = True
-        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-        if results.multi_face_landmarks:
-          for face_landmarks in results.multi_face_landmarks:
+    success, frame = cap.read()
+    if not success:
+        print("Ignoring empty camera frame.")
+        ikkuna.after(10, paivita_video)
+        return
+
+    frame = cv2.cvtColor(cv2.flip(frame, 1), cv2.COLOR_BGR2RGB)
+    frame.flags.writeable = False
+    results = face_mesh.process(frame)
+
+    frame.flags.writeable = True
+    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+    frame_korkeus, frame_leveys = frame.shape[:2]
+
+    if results.multi_face_landmarks:
+        thin_drawing_spec = mp_drawing.DrawingSpec(thickness=1, circle_radius=1)
+
+        for face_landmarks in results.multi_face_landmarks:
 
             if valintaruutu_arvo_silmille.get():
                 mp_drawing.draw_landmarks(
@@ -177,7 +191,6 @@ def aloita():
                     landmark_drawing_spec=thin_drawing_spec,
                     connection_drawing_spec=thin_drawing_spec)
 
-            #Tutkitaan kasvojen osaa:
             kasvot_vasen=np.array(face_landmarks.landmark)[234]
             kasvot_oikea=np.array(face_landmarks.landmark)[454]
             kasvot_yla=np.array(face_landmarks.landmark)[10]
@@ -196,12 +209,8 @@ def aloita():
                 paneeli_image_kasvot.image=img_update_kasvot
                 paneeli_image_kasvot.update()
 
-            #Tutktaan lisaa...oikea silma...
-            #Tällä tavoin ko. dataframesta saadaan tieto ulos...
             mika_kohta=133
             kohta=np.array(face_landmarks.landmark)[mika_kohta]
-            #print(int(kohta.x*640))
-            #lisätään tämän tiedon perusteella lisäpiirre kuvaan...
             paksuus=3
 
             silma_o_vasen=np.array(face_landmarks.landmark)[130]
@@ -225,8 +234,6 @@ def aloita():
                 paneeli_image_silma_o.image=img_update_silma_o
                 paneeli_image_silma_o.update()
 
-            #Tutktaan lisaa...oikea silma...
-
             silma_v_vasen=np.array(face_landmarks.landmark)[463]
             silma_v_oikea=np.array(face_landmarks.landmark)[359]
             silma_v_yla=np.array(face_landmarks.landmark)[257]
@@ -245,51 +252,28 @@ def aloita():
                 paneeli_image_silma_v.image=img_update_silma_v
                 paneeli_image_silma_v.update()
 
-            #Tällä tavoin ko. dataframesta saadaan tieto ulos...
             mika_kohta=362
             kohta=np.array(face_landmarks.landmark)[mika_kohta]
-            #print(int(kohta.x*640))
-            #lisätään tämän tiedon perusteella lisäpiirre kuvaan...
             if valintaruutu_arvo.get()==1:
                 paksuus=3
                 cv2.circle(frame,(int(kohta.x*frame_leveys),int(kohta.y*frame_korkeus)),15,(0,0,255),paksuus)
 
-
-            #=====================================================================================================
-            #
-            #       A  N  A  L  Y  S  I  S
-            #
-            #=====================================================================================================
-            #
-            # There is the room for the analysis...after training the artificial intelligence implement it here
-            #... to make the analysis...
-            # ...to load the model use command like model = keras.models.load_model('the_model_I_have_trained.keras')
-            #
-
             luku=luku+1
             aikavektori.append(luku)
 
-            #simulated here...replace with your own code...
             right_eye_some_result=100*np.random.rand()
 
-            #muunnetaan matriisi kuvaksi...skaalaus...matriisiksi...mallin lapi...
             kuva=Image.fromarray(silma_v, 'RGB')
             kuva_vakiokoko_v=kuva.resize((400,200))
             kuva_vakiokoko = np.array(kuva_vakiokoko_v)
             silma_o_syote=np.expand_dims(kuva_vakiokoko,axis=0)
             right_eye_some_result=model(silma_o_syote)
 
-            #this way you can investigat the result in detail:
-            #print(np.array(right_eye_some_result)[0])
-
-            #right_eye_some_result=np.array(right_eye_some_result)
             temp=np.array(right_eye_some_result)[0]
             oikea_tulosvektori.append(temp)
 
-            #simulated here...replace with your own code...
             left_eye_some_result=1*np.random.rand()
 
-            #muunnetaan matriisi kuvaksi...skaalaus...matriisiksi...mallin lapi...
             kuva=Image.fromarray(silma_o, 'RGB')
             kuva_vakiokoko_v=kuva.resize((400,200))
             kuva_vakiokoko = np.array(kuva_vakiokoko_v)
@@ -299,13 +283,6 @@ def aloita():
             temp=np.array(left_eye_some_result)[0]
             vasen_tulosvektori.append(temp)
 
-            #vasen_tulosvektori.append(left_eye_some_result)
-
-            #
-            #
-            #=====================================================================================================
-
-            #tehdään vielä graafit:
             if valintaruutu_arvo.get()==1:
                 a.cla()
                 a.plot(aikavektori,oikea_tulosvektori,'r')
@@ -321,19 +298,58 @@ def aloita():
                 vasen_graafi_canvas.draw()
                 vasen_graafi_canvas.get_tk_widget().update()
 
-        frame_pikku=imutils.resize(frame,width=320)
-        frame_nayta=cv2.cvtColor(frame_pikku,cv2.COLOR_BGR2RGB)
-        img_update = ImageTk.PhotoImage(Image.fromarray(frame_nayta))
-        paneeli_image.configure(image=img_update)
-        paneeli_image.image=img_update
-        paneeli_image.update()
+    frame_pikku=imutils.resize(frame,width=320)
+    frame_nayta=cv2.cvtColor(frame_pikku,cv2.COLOR_BGR2RGB)
+    img_update = ImageTk.PhotoImage(Image.fromarray(frame_nayta))
+    paneeli_image.configure(image=img_update)
+    paneeli_image.image=img_update
+    paneeli_image.update()
 
-        if cv2.waitKey(5) & 0xFF == 27:
-          break
+    if camera_running:
+        ikkuna.after(10, paivita_video)
+
+def aloita():
+    global cap
+    global face_mesh
+    global camera_running
+    global oikea_tulosvektori
+    global vasen_tulosvektori
+    global aikavektori
+    global luku
+
+    if camera_running:
+        return
+
+    cap = avaa_kamera(0)
+    if not cap.isOpened():
+        print("Camera could not be opened.")
+        cap.release()
+        cap = None
+        return
+
+    print("Kameran perustarkkuus:",cap.get(3),cap.get(4))
+    oikea_tulosvektori=[]
+    vasen_tulosvektori=[]
+    aikavektori=[]
+    luku=0
+    face_mesh = mp_face_mesh.FaceMesh(
+        min_detection_confidence=0.5,
+        min_tracking_confidence=0.5)
+    camera_running = True
+    paivita_video()
 
 def lopeta():
     global cap
-    cap.release()
+    global face_mesh
+    global camera_running
+
+    camera_running = False
+    if face_mesh is not None:
+        face_mesh.close()
+        face_mesh = None
+    if cap is not None:
+        cap.release()
+        cap = None
     cv2.destroyAllWindows()
     print("Stopped!")
 
