@@ -126,7 +126,7 @@ valintaruutu_arvo = tkinter.IntVar()
 valintaruutu_arvo_silmille=tkinter.IntVar()
 
 #Jos malli on saatavilla (huom! random-painoilla luotu esimerkkimalli tyypillisesti jaossa...)
-model = keras.models.load_model("example_model.keras")
+model = keras.models.load_model("model.keras")
 
 global silma_v
 global silma_o
@@ -138,6 +138,12 @@ oikea_tulosvektori = []
 vasen_tulosvektori = []
 aikavektori = []
 luku = 0
+
+
+def valmistele_silmakuva_mallille(silmakuva):
+    silmakuva_rgb = cv2.cvtColor(silmakuva, cv2.COLOR_BGR2RGB)
+    silmakuva_rgb = cv2.resize(silmakuva_rgb, (400, 200), interpolation=cv2.INTER_AREA)
+    return np.expand_dims(silmakuva_rgb.astype(np.uint8), axis=0)
 
 
 def avaa_kamera(index=0):
@@ -263,24 +269,18 @@ def paivita_video():
 
             right_eye_some_result=100*np.random.rand()
 
-            kuva=Image.fromarray(silma_v, 'RGB')
-            kuva_vakiokoko_v=kuva.resize((400,200))
-            kuva_vakiokoko = np.array(kuva_vakiokoko_v)
-            silma_o_syote=np.expand_dims(kuva_vakiokoko,axis=0)
-            right_eye_some_result=model(silma_o_syote)
+            silma_v_syote = valmistele_silmakuva_mallille(silma_v)
+            right_eye_some_result = model.predict(silma_v_syote, verbose=0)
 
-            temp=np.array(right_eye_some_result)[0]
+            temp=float(np.squeeze(right_eye_some_result))
             oikea_tulosvektori.append(temp)
 
             left_eye_some_result=1*np.random.rand()
 
-            kuva=Image.fromarray(silma_o, 'RGB')
-            kuva_vakiokoko_v=kuva.resize((400,200))
-            kuva_vakiokoko = np.array(kuva_vakiokoko_v)
-            silma_o_syote=np.expand_dims(kuva_vakiokoko,axis=0)
-            left_eye_some_result=model(silma_o_syote)
+            silma_o_syote = valmistele_silmakuva_mallille(silma_o)
+            left_eye_some_result = model.predict(silma_o_syote, verbose=0)
 
-            temp=np.array(left_eye_some_result)[0]
+            temp=float(np.squeeze(left_eye_some_result))
             vasen_tulosvektori.append(temp)
 
             if valintaruutu_arvo.get()==1:
